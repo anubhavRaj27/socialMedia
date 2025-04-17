@@ -1,7 +1,7 @@
 import { Box, useMediaQuery } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
-import { useLocation, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import Navbar from "scenes/navbar";
 import FriendListWidget from "scenes/widgets/FriendListWidget";
 import PostsWidget from "scenes/widgets/PostsWidget";
@@ -9,8 +9,8 @@ import UserWidget from "scenes/widgets/UserWidget";
 
 const ProfilePage = () => {
   const [user, setUser] = useState(null);
+  const {_id} = useSelector((state)=>state.user);
   const { userId } = useParams();
-  const location = useLocation();
   const token = useSelector((state) => state.token);
   const isNonMobileScreens = useMediaQuery("(min-width:1000px)");
 
@@ -23,9 +23,21 @@ const ProfilePage = () => {
     setUser(data);
   };
 
+  const updateViews = async () => {
+    const response = await fetch(`http://localhost:3001/users/${userId}/profile-views`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await response.json();
+    setUser(data);
+  }
+
   useEffect(() => {
-    console.log(userId)
-    getUser();
+    if(_id!==userId){
+      updateViews();
+    }else{
+      getUser();
+    }
   }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!user) return null;
