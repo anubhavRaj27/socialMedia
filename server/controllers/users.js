@@ -61,3 +61,43 @@ export const addRemoveFriend = async (req, res) => {
     res.status(404).json({ message: err.message });
   }
 };
+
+export const getUserByName =  async (req,res) => {
+  try {
+    const { userName } = req.params;          // "jack neuman"
+    const terms = userName.trim().split(/\s+/);
+
+    let query;
+
+    if (terms.length === 1) {
+      // single word → look in either first or last name
+      const term = terms[0];
+      query = {
+        $or: [
+          { firstName: { $regex: term, $options: "i" } },
+          { lastName:  { $regex: term, $options: "i" } }
+        ]
+      };
+    } else {
+      const [first, last] = terms;
+      // two words → match them in either order
+      query = {
+        $or: [
+          { $and: [
+              { firstName: { $regex: first, $options: "i" } },
+              { lastName:  { $regex: last,  $options: "i" } }
+            ]},
+          { $and: [
+              { firstName: { $regex: last,  $options: "i" } },
+              { lastName:  { $regex: first, $options: "i" } }
+            ]}
+        ]
+      };
+    }
+
+    const users = await User.find(query).select("-password"); 
+    res.status(200).json(users);
+  } catch (err) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+}

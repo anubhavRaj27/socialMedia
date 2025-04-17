@@ -5,22 +5,18 @@ import {
   InputBase,
   Typography,
   Select,
+  Paper,
   MenuItem,
   FormControl,
   useTheme,
   useMediaQuery,
 } from "@mui/material";
-import {
-  Search,
-  DarkMode,
-  LightMode,
-  Menu,
-  Close,
-} from "@mui/icons-material";
+import { Search, DarkMode, LightMode, Menu, Close } from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
 import { setMode, setLogout } from "state";
 import { useNavigate } from "react-router-dom";
 import FlexBetween from "components/FlexBetween";
+import { useDebouncedCallback } from "common/utils";
 
 const Navbar = () => {
   const [isMobileMenuToggled, setIsMobileMenuToggled] = useState(false);
@@ -28,6 +24,8 @@ const Navbar = () => {
   const navigate = useNavigate();
   const user = useSelector((state) => state.user);
   const isNonMobileScreens = useMediaQuery("(min-width: 1000px)");
+  const [value, setValue] = useState("");
+  const token = useSelector((state) => state.token);
 
   const theme = useTheme();
   const neutralLight = theme.palette.neutral.light;
@@ -37,6 +35,25 @@ const Navbar = () => {
   const alt = theme.palette.background.alt;
 
   const fullName = `${user.firstName} ${user.lastName}`;
+  const [searchedUsers, setSearchedUsers] = useState([]);
+
+  const searchUser = async (userName) => {
+    if (userName.trim() === "") {
+      setSearchedUsers([]);     
+      return;
+    }
+    const response = await fetch(
+      `http://localhost:3001/users/search/${userName}`,
+      {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    const data = await response.json();
+    setSearchedUsers(data);
+  };
+
+  const debouncedSearchUsers = useDebouncedCallback(searchUser, 600);
 
   return (
     <FlexBetween padding="1rem 6%" backgroundColor={alt}>
@@ -56,17 +73,55 @@ const Navbar = () => {
           VibeVista
         </Typography>
         {isNonMobileScreens && (
-          <FlexBetween
-            backgroundColor={neutralLight}
-            borderRadius="9px"
-            gap="3rem"
-            padding="0.1rem 1.5rem"
-          >
-            <InputBase placeholder="Search..." />
-            <IconButton>
-              <Search />
-            </IconButton>
-          </FlexBetween>
+          <Box position="relative" width="250px">
+            <FlexBetween
+              backgroundColor={neutralLight}
+              borderRadius="9px"
+              gap="1rem"
+              padding="0.1rem 1rem"
+            >
+              <InputBase
+                placeholder="Search..."
+                value={value}
+                onChange={(e) => {
+                  const txt = e.target.value;
+                  setValue(txt);
+                  debouncedSearchUsers(txt); 
+                }}
+                fullWidth
+              />
+              <IconButton>
+                <Search />
+              </IconButton>
+            </FlexBetween>
+            {searchedUsers.length > 0 && (
+              <Paper
+                elevation={3}
+                sx={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  mt: "0.25rem",
+                  zIndex: 10,
+                }}
+              >
+                {searchedUsers.map((user) => (
+                  <MenuItem
+                    key={user._id}
+                    onClick={() => {
+                      setSearchedUsers([]);
+                      navigate(`/profile/${user._id}`)
+                    }}
+                  >
+                    <Typography>
+                      {user.firstName} {user.lastName}
+                    </Typography>
+                  </MenuItem>
+                ))}
+              </Paper>
+            )}
+          </Box>
         )}
       </FlexBetween>
 
